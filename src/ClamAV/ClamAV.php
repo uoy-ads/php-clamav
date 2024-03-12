@@ -84,6 +84,34 @@ abstract class ClamAV
         return $this->sendCommand('SHUTDOWN');
     }
 
+    /*
+    non-chunking version of fileScanInStream
+    adapted from https://github.com/stemount/clamav-drupal-rest/blob/master/src/Scanner/DaemonUnixSocket.php
+    */
+    public function fileScanInStreamNoChunk(string $file): bool
+    {
+        $file_handler = fopen($file, 'r');
+        $scanner_handler = $this->getSocket();
+
+        // Push to the ClamAV socket.
+        $bytes = filesize($file);
+        fwrite($scanner_handler, "zINSTREAM\0");
+        fwrite($scanner_handler, pack("N", $bytes));
+        stream_copy_to_stream($file_handler, $scanner_handler);
+    
+        // Send a zero-length block to indicate that we're done sending file data.
+        fwrite($scanner_handler, pack("N", 0));
+    
+        // Request a response from the service.
+        $response = trim(fgets($scanner_handler));
+    
+        fclose($scanner_handler);
+
+        return preg_match('/^stream: OK$/', $response);
+
+        
+    }
+
     /**
      * Scan a file or a directory (recursively) with archive support
      * enabled (if not disabled in clamd.conf). A full path is required.

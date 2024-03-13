@@ -91,7 +91,7 @@ abstract class ClamAV
     public function fileScanInStreamNoChunk(string $file): bool
     {
         $file_handler = fopen($file, 'r');
-        $scanner_handler = $this->getSocket();
+        $scanner_handler = socket_export_stream($this->getSocket());
 
         // Push to the ClamAV socket.
         $bytes = filesize($file);
